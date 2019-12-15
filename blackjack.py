@@ -1,4 +1,6 @@
 # blackjack.py
+# I made this because I'm convinced that blackjack apps which have a monetization
+# scheme will play unfairly in order to get players to put USD into the game.
 
 import random, os, sys, csv, math, statistics, time
 
