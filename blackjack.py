@@ -10,22 +10,16 @@ fieldnames = ['games played',
               'player blackjacks',
               'house wins',
               'house blackjacks',
-              'draws']
+              'draws count']
 
-games = 0
-plwns = 0
-hswns = 0
-draws = 0
-plbjk = 0
-hsbjk = 0
+num_games = 0
+player_wins_count = 0
+house_wins_count = 0
+draws_count = 0
+player_blackjack_count = 0
+house_blackjack_count = 0
+this_session_games = 0
 
-thisSession = 0
-
-# if not file_exists:
-#     with open(filename, 'w') as f:
-#         if not file_exists:
-#             csv_writer = csv.DictWriter(f, fieldnames=fieldnames)
-#             csv_writer.writeheader()
 
 if file_exists:
     with open(filename, 'r') as f:
@@ -33,12 +27,12 @@ if file_exists:
         csv_data = list(csv_reader)
 
     for line in csv_data:
-        games = int(line['games played'])
-        plwns = int(line['player wins'])
-        hswns = int(line['house wins'])
-        draws = int(line['draws'])
-        plbjk = int(line['player blackjacks'])
-        hsbjk = int(line['house blackjacks'])
+        num_games = int(line['games played'])
+        player_wins_count = int(line['player wins'])
+        house_wins_count = int(line['house wins'])
+        draws_count = int(line['draws count'])
+        player_blackjack_count = int(line['player blackjacks'])
+        house_blackjack_count = int(line['house blackjacks'])
 
 
 class Card:
@@ -69,24 +63,24 @@ ranks = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K']
 
 deck = []
 numDecks = 6
-numshuffles = 5
+num_shuffles = 5
 
 
-def shuffledeck(numshuffles, deck, ranks, suits):
-    global shuffleNeeded
+def shuffle_deck(num_shuffles, deck, ranks, suits):
+    global shuffle_needed
     for sets in range(numDecks):
         for rank in ranks:
             for suit in suits:
                 deck.append(Card(rank, suit, sets))
 
-    if numshuffles == 1:
-        for shuffle in range(numshuffles - 1 , -1, -1):
+    if num_shuffles == 1:
+        for shuffle in range(num_shuffles - 1 , -1, -1):
             print('Shuffling %s deck one time. Total of %s cards' % (numDecks, len(deck)))
             for i in range(len(deck) - 1, 0, -1):
                 j = random.randint(0, i)
                 deck[i], deck[j] = deck[j], deck[i]
     else:
-        for shuffle in range(numshuffles - 1, -1, -1):
+        for shuffle in range(num_shuffles - 1, -1, -1):
             print('Shuffling %s decks %s more times. Total of %s cards' % (numDecks, shuffle, len(deck)))
             for i in range(len(deck) - 1, 0, -1):
                 j = random.randint(0, i)
@@ -97,183 +91,191 @@ def shuffledeck(numshuffles, deck, ranks, suits):
     shufflespot = round(len(deck) * 0.85) + shuffleoffset
     deck.insert(shufflespot - 5, Card(0, 'shuffle', 'shuffle'))
 
-    shuffleNeeded = False
+    shuffle_needed = False
     return deck
 
 
-def playerwins():
+def player_wins():
     print('Player Wins. House pays 2:1\n\n')
-    global plwns
-    plwns += 1
-    return plwns
+    global player_wins_count
+    player_wins_count += 1
+    return player_wins_count
     # double chips
 
 
-def playerblackjack():
+def player_blackjack():
     print('Player Wins. Black Jack pays 3:2\n\n')
-    global plbjk
-    plbjk += 1
-    return plbjk
+    global player_blackjack_count
+    player_blackjack_count += 1
+    return player_blackjack_count
     # 3/2 chips
 
 
-def housewins():
+def dealer_wins():
     print('House Wins. House takes bet.\n\n')
-    global hswns
-    hswns += 1
-    return hswns
+    global house_wins_count
+    house_wins_count += 1
+    return house_wins_count
     # keep chips
 
 
-def houseblackjack():
+def dealer_blackjack():
     print('Dealer has blackjack. House takes bet.\n\n')
-    global hsbjk
-    hsbjk += 1
-    return hsbjk
+    global house_blackjack_count
+    house_blackjack_count += 1
+    return house_blackjack_count
     # keep chips
 
 
 def push():
     print('Push. Player keeps bet.')
-    global draws
-    draws += 1
-    return draws
+    global draws_count
+    draws_count += 1
+    return draws_count
     # add chips
 
 
-deck = shuffledeck(numshuffles, deck, ranks, suits)
-continuePlay = True
-playerTurn = True
+deck = shuffle_deck(num_shuffles, deck, ranks, suits)
+continue_play = True
+player_turn = True
 preTurn = True
-dealerTurn = False
+dealer_turn = False
 
 
-def dealcard(who):
-    global shuffleNeeded
+def deal_card(who):
+    global shuffle_needed
     if deck[0].rank == 'shuffle':
         print('_,.-.,__,.-.,_ The shuffle card has been reached _,.-.,__,.-.,_')
-        shuffleNeeded = True
+        shuffle_needed = True
         deck.pop(0)
     who.append(deck.pop(0))
     print('Card was dealt and now there are %s cards left in deck' % len(deck))
 
 
-while continuePlay:
-    playerHand = []
-    houseHand = []
-    playerValue = 0
-    houseValue = 0
+def hand_value(hand):
+    this_hand_value = 0
+    for card in range(len(hand)):
+        this_hand_value += hand[card].value
+    return this_hand_value
 
-    playerBust = False
-    houseBust = False
-    playerBlackjack = False
-    dealerBlackjack = False
 
-    print('Player: %s   House: %s   Draws: %s' % (plwns + plbjk, hswns + hsbjk, draws))
-    games += 1
-    thisSession += 1 # debug thing to run a lot of games, remove later
-    dealcard(playerHand)
-    dealcard(houseHand)
-    dealcard(playerHand)
-    dealcard(houseHand)
-    for card in range(len(houseHand)):
-        houseValue += houseHand[card].value
-    for card in range(len(playerHand)):
-        playerValue += playerHand[card].value
+while continue_play:
+    player_hand = []
+    dealer_hand = []
+    player_value = 0
+    dealer_value = 0
+
+    player_bust = False
+    dealer_bust = False
+    player_has_blackjack = False
+    dealer_has_blackjack = False
+
+    print('Player: %s   House: %s   draws_count: %s'
+          % (player_wins_count + player_blackjack_count,
+             house_wins_count + house_blackjack_count,
+             draws_count))
+    num_games += 1
+    this_session_games += 1 # debug thing to run a lot of num_games, remove later
+    deal_card(player_hand)
+    deal_card(dealer_hand)
+    deal_card(player_hand)
+    deal_card(dealer_hand)
+    dealer_value = hand_value(dealer_hand)
+    player_value = hand_value(player_hand)
 
     print('Player\'s hand:')
-    for card in range(len(playerHand)):
-        print(playerHand[card])
-    print('Player hand value is %s' % playerValue)
-    print('Dealer is showing a %s' % houseHand[0])
-    print('Dealer is hiding a %s' % houseHand[1])
-    print('Dealer hand value is %s' % houseValue)
+    for card in range(len(player_hand)):
+        print(player_hand[card])
+    print('Player hand value is %s' % player_value)
+    print('Dealer is showing a %s' % dealer_hand[0])
+    print('Dealer is hiding a %s' % dealer_hand[1])
+    print('Dealer hand value is %s' % dealer_value)
 
-    if playerValue == 21:
+    if player_value == 21:
         print('Player has a blackjack')
-        playerBlackjack = True
+        player_has_blackjack = True
 
-    if houseValue == 21:
+    if dealer_value == 21:
         print('Dealer has a blackjack')
-        dealerBlackjack = True
+        dealer_has_blackjack = True
 
-    if playerBlackjack and dealerBlackjack:
+    if player_has_blackjack and dealer_has_blackjack:
         print('Push')
-        playerTurn = False
-        dealerTurn = False
+        player_turn = False
+        dealer_turn = False
 
-    if playerBlackjack and not dealerBlackjack:
-        playerblackjack()
-        playerTurn = False
-        dealerTurn = False
+    if player_has_blackjack and not dealer_has_blackjack:
+        player_blackjack()
+        player_turn = False
+        dealer_turn = False
 
-    if dealerBlackjack and not playerBlackjack:
-        houseblackjack()
-        playerTurn = False
-        dealerTurn = False
+    if dealer_has_blackjack and not player_has_blackjack:
+        dealer_blackjack()
+        player_turn = False
+        dealer_turn = False
 
-    while playerTurn:
+    while player_turn:
 
-        if playerValue > 21:
-            housewins()
-            playerBust = True
-            playerTurn = False
+        if player_value > 21:
+            dealer_wins()
+            player_bust = True
+            player_turn = False
             break
 
         else:
             # play = input('Would you like to (h)it, (s)tay, (d)ouble, or (s)plit?').lower()
             play = 's'
             if 'h' in play:
-                dealcard(playerHand)
+                deal_card(player_hand)
             elif 's' in play:
-                playerTurn = False
-                dealerTurn = True
+                player_turn = False
+                dealer_turn = True
 
-    while dealerTurn:
+    while dealer_turn:
 
-        if houseValue < 17:
+        if dealer_value < 17:
             print('Dealer must hit')
-            dealcard(houseHand)
-            houseValue += houseHand[-1].value
+            deal_card(dealer_hand)
+            dealer_value += dealer_hand[-1].value
             print('Dealers\'s hand:')
-            for card in range(len(houseHand)):
-                print(houseHand[card])
-            print('Dealer hand value is %s' % houseValue)
+            for card in range(len(dealer_hand)):
+                print(dealer_hand[card])
+            print('Dealer hand value is %s' % dealer_value)
 
-        if houseValue > 21:
-            houseBust = True
+        if dealer_value > 21:
+            dealer_bust = True
             print('Dealer bust')
-            playerwins()
+            player_wins()
             break
 
-        if houseValue >= 17:
+        if dealer_value >= 17:
             print('Dealer must stay')
             break
 
-    if playerValue > houseValue and not playerBlackjack:
-        print('Player\'s final hand value is %s' % playerValue)
-        print('Dealer\'s final hand value is %s' % houseValue)
-        playerwins()
+    if player_value > dealer_value and not player_has_blackjack:
+        print('Player\'s final hand value is %s' % player_value)
+        print('Dealer\'s final hand value is %s' % dealer_value)
+        player_wins()
         # player chips increase
 
-    if playerValue < houseValue and not houseBust and not dealerBlackjack:
-        print('Player\'s final hand value is %s' % playerValue)
-        print('Dealer\'s final hand value is %s' % houseValue)
-        housewins()
+    if player_value < dealer_value and not dealer_bust and not dealer_has_blackjack:
+        print('Player\'s final hand value is %s' % player_value)
+        print('Dealer\'s final hand value is %s' % dealer_value)
+        dealer_wins()
         # player chips stay constant
 
-    if playerValue == houseValue:
-        print('Player\'s final hand value is %s' % playerValue)
-        print('Dealer\'s final hand value is %s' % houseValue)
+    if player_value == dealer_value:
+        print('Player\'s final hand value is %s' % player_value)
+        print('Dealer\'s final hand value is %s' % dealer_value)
         push()
         # player chips stay constant
 
-    line = {'games played':                games,
-            'player wins':          plwns,
-            'player blackjacks':    plbjk,
-            'house wins':           hswns,
-            'house blackjacks':     hsbjk,
-            'draws':                draws,
+    line = {'games played':         num_games,
+            'player wins':          player_wins_count,
+            'player blackjacks':    player_blackjack_count,
+            'house wins':           house_wins_count,
+            'house blackjacks':     house_blackjack_count,
+            'draws count':          draws_count,
             }
 
     with open(filename, 'w') as f:
@@ -281,29 +283,29 @@ while continuePlay:
         csv_writer.writeheader()
         csv_writer.writerow(line)
 
-    if thisSession < 1000:
-        continuePlay = True
-        playerTurn = True
-        dealerTurn = False
+    if this_session_games < 1000:
+        continue_play = True
+        player_turn = True
+        dealer_turn = False
         preTurn = True
-        if shuffleNeeded:
-            deck = shuffledeck(numshuffles, [], ranks, suits)
+        if shuffle_needed:
+            deck = shuffle_deck(num_shuffles, [], ranks, suits)
     else:
-        continuePlay = False
+        continue_play = False
 
 
     # Player responds to a new game prompt
 
     # response = input('Deal Again? (d)eal (b)et (q)uit').lower()
     # if response in 'd':
-    #     continuePlay = True
-    #     playerTurn = True
-    #     dealerTurn = False
+    #     continue_play = True
+    #     player_turn = True
+    #     dealer_turn = False
     #     preTurn = True
-    #     if shuffleNeeded:
-    #         deck = shuffledeck(numshuffles, [], ranks, suits)
+    #     if shuffle_needed:
+    #         deck = shuffle_deck(num_shuffles, [], ranks, suits)
     # elif response in 'q':
-    #     continuePlay = False
+    #     continue_play = False
     # elif response not in ['d', 'q']:
     #     print('You\'re dumb, I quit.')
-    #     continuePlay = False
+    #     continue_play = False
