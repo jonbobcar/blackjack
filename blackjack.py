@@ -4,6 +4,8 @@
 
 import random, os, sys, csv, math, statistics, time
 
+auto_play = True
+auto_play_games = 100000
 
 filename = 'blackjack_outcomes.csv'
 file_exists = os.path.isfile(filename)
@@ -12,7 +14,8 @@ fieldnames = ['games played',
               'player blackjacks',
               'house wins',
               'house blackjacks',
-              'draws count']
+              'draws count',
+              'player chips']
 
 num_games = 0
 player_wins_count = 0
@@ -21,6 +24,7 @@ draws_count = 0
 player_blackjack_count = 0
 house_blackjack_count = 0
 this_session_games = 0
+player_chips = 0
 
 
 if file_exists:
@@ -66,6 +70,10 @@ ranks = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K']
 deck = []
 numDecks = 6
 num_shuffles = 5
+continue_play = True
+player_turn = True
+dealer_turn = False
+shuffle_needed = True
 
 
 def shuffle_deck(num_shuffles, deck, ranks, suits):
@@ -144,13 +152,6 @@ def blackjack_push():
     # add chips
 
 
-deck = shuffle_deck(num_shuffles, deck, ranks, suits)
-continue_play = True
-player_turn = True
-preTurn = True
-dealer_turn = False
-
-
 def deal_card(who):
     global shuffle_needed
     if deck[0].rank == 'shuffle':
@@ -186,6 +187,8 @@ def show_hand(hand):
 
 
 while continue_play:
+    if shuffle_needed:
+        deck = shuffle_deck(num_shuffles, deck, ranks, suits)
     player_hand = []
     dealer_hand = []
     player_value = 0
@@ -204,7 +207,6 @@ while continue_play:
           % (player_wins_count + player_blackjack_count,
              house_wins_count + house_blackjack_count,
              draws_count))
-    num_games += 1
     this_session_games += 1 # debug thing to run a lot of num_games, remove later
     deal_card(player_hand)
     deal_card(dealer_hand)
@@ -244,6 +246,7 @@ while continue_play:
         dealer_turn = False
 
     while player_turn:
+
         print('\n\nDealer is showing a %s' % dealer_hand[0])
         # print('Dealer is hiding a %s' % dealer_hand[1])
         # print('Dealer hand value is %s' % dealer_value)
@@ -259,37 +262,56 @@ while continue_play:
             player_turn = False
             break
 
-        else:
-            play = input('Would you like to (h)it, (s)tay').lower()
-                         #', (d)ouble, or (s)plit?').lower()
-            # play = 's'
+        elif not auto_play:
+            play = input('Would you like to (h)it, (s)tay   ').lower()
+                             #', (d)ouble, or (s)plit?').lower()
             if 'h' in play:
                 deal_card(player_hand)
                 player_value = hand_value(player_hand)
             elif 's' in play:
+                print('\n\n ')
+                player_turn = False
+                dealer_turn = True
+
+        else:
+            if player_value < 17:
+                play = 'h'
+                print('Player decided to hit')
+            else:
+                play = 's'
+                print('Player decided to stay')
+            if 'h' in play:
+                deal_card(player_hand)
+                player_value = hand_value(player_hand)
+            elif 's' in play:
+                print('\n\n ')
                 player_turn = False
                 dealer_turn = True
 
     while dealer_turn:
-        show_hand(dealer_hand)
-        print('Dealer hand value is %s' % dealer_value)
 
         if dealer_value < 17:
+            show_hand(dealer_hand)
+            print('Dealer hand value is %s' % dealer_value)
             print('Dealer must hit')
             deal_card(dealer_hand)
-            show_hand(dealer_hand)
             dealer_value = hand_value(dealer_hand)
-            print('Dealer hand value is %s' % dealer_value)
 
         if dealer_value > 21:
+            show_hand(dealer_hand)
+            print('Dealer hand value is %s' % dealer_value)
             dealer_bust = True
             print('Dealer bust')
             player_wins()
             break
 
         if dealer_value >= 17:
+            show_hand(dealer_hand)
+            print('Dealer hand value is %s' % dealer_value)
             print('Dealer must stay')
             break
+
+    num_games += 1
 
     if player_value > dealer_value and not player_bust and not player_has_blackjack:
         print('Player\'s final hand value is %s' % player_value)
@@ -315,6 +337,7 @@ while continue_play:
             'house wins':           house_wins_count,
             'house blackjacks':     house_blackjack_count,
             'draws count':          draws_count,
+            'player chips':         player_chips
             }
 
     with open(filename, 'w') as f:
@@ -324,30 +347,31 @@ while continue_play:
 
 # Run this_session_games number of games, then quit
 
-    # if this_session_games < 1000:
-    #     continue_play = True
-    #     player_turn = True
-    #     dealer_turn = False
-    #     preTurn = True
-    #     if shuffle_needed:
-    #         deck = shuffle_deck(num_shuffles, [], ranks, suits)
-    # else:
-    #     continue_play = False
+    if auto_play:
+        if this_session_games < auto_play_games:
+            continue_play = True
+            player_turn = True
+            dealer_turn = False
+            preTurn = True
+            if shuffle_needed:
+                deck = shuffle_deck(num_shuffles, [], ranks, suits)
+        else:
+            continue_play = False
 
 
 # Player responds to a new game prompt
 
-    response = input('Deal Again? (d)eal (b)et (q)uit').lower()
-    if response in 'd':
-        continue_play = True
-        player_turn = True
-        dealer_turn = False
-        preTurn = True
-        if shuffle_needed:
-            deck = shuffle_deck(num_shuffles, [], ranks, suits)
-    elif response in 'q':
-        continue_play = False
-    elif response not in ['d', 'q']:
-        print('You\'re dumb, I quit.')
-        continue_play = False
-
+    if not auto_play:
+        response = input('Deal Again? (d)eal (b)et (q)uit:   ').lower()
+        if response in 'd':
+            continue_play = True
+            player_turn = True
+            dealer_turn = False
+            preTurn = True
+            if shuffle_needed:
+                deck = shuffle_deck(num_shuffles, [], ranks, suits)
+        elif response in 'q':
+            continue_play = False
+        elif response not in ['d', 'q']:
+            print('You\'re dumb, I quit.')
+            continue_play = False
