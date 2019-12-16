@@ -120,7 +120,7 @@ def player_wins():
     player_stack += current_wager
     print('Player wins %s chips' % current_wager)
     if double_down:
-        player_stack += current_wager
+        player_stack += current_wager // 2
     return player_wins_count
 
 
