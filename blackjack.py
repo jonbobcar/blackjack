@@ -83,6 +83,7 @@ end_turn = False
 
 
 def shuffle_deck():
+    deck = []
     global shuffle_needed
     for sets in range(num_decks):
         for rank in ranks:
