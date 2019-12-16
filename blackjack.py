@@ -4,7 +4,7 @@
 
 import random, os, sys, csv, math, statistics, time
 
-auto_play = True
+auto_play = False
 auto_play_games = 1000
 auto_wager = 5
 
