@@ -5,7 +5,8 @@
 import random, os, sys, csv, math, statistics, time
 
 auto_play = True
-auto_play_games = 100000
+auto_play_games = 1000
+auto_wager = 5
 
 filename = 'blackjack_outcomes.csv'
 file_exists = os.path.isfile(filename)
@@ -39,6 +40,7 @@ if file_exists:
         draws_count = int(line['draws count'])
         player_blackjack_count = int(line['player blackjacks'])
         house_blackjack_count = int(line['house blackjacks'])
+        player_chips = int(line['player chips'])
 
 
 class Card:
@@ -70,10 +72,14 @@ ranks = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K']
 deck = []
 numDecks = 6
 num_shuffles = 5
+current_wager = 0
+
 continue_play = True
 player_turn = True
 dealer_turn = False
 shuffle_needed = True
+first_game = True
+end_game = False
 
 
 def shuffle_deck(num_shuffles, deck, ranks, suits):
@@ -84,7 +90,7 @@ def shuffle_deck(num_shuffles, deck, ranks, suits):
                 deck.append(Card(rank, suit, sets))
 
     if num_shuffles == 1:
-        for shuffle in range(num_shuffles - 1 , -1, -1):
+        for shuffle in range(num_shuffles - 1, -1, -1):
             print('Shuffling %s deck one time. Total of %s cards' % (numDecks, len(deck)))
             for i in range(len(deck) - 1, 0, -1):
                 j = random.randint(0, i)
@@ -108,33 +114,40 @@ def shuffle_deck(num_shuffles, deck, ranks, suits):
 def player_wins():
     print('Player Wins. House pays 2:1\n\n')
     global player_wins_count
+    global player_chips
     player_wins_count += 1
+    player_chips += current_wager
+    print('Player wins %s chips' % current_wager)
     return player_wins_count
-    # double chips
 
 
 def player_blackjack():
     print('Player Wins. Black Jack pays 3:2\n\n')
     global player_blackjack_count
+    global player_chips
     player_blackjack_count += 1
+    player_chips += int(3/2 * current_wager)
+    print('Player wins %s chips' % (int(math.ceil(3/2 * current_wager))))
     return player_blackjack_count
-    # 3/2 chips
 
 
 def dealer_wins():
     print('House Wins. House takes bet.\n\n')
     global house_wins_count
+    global player_chips
     house_wins_count += 1
+    player_chips -= current_wager
+    print('Player lost %s chips' % current_wager)
     return house_wins_count
-    # keep chips
 
 
 def dealer_blackjack():
     print('Dealer has blackjack. House takes bet.\n\n')
     global house_blackjack_count
+    global player_chips
     house_blackjack_count += 1
+    player_chips -= current_wager
     return house_blackjack_count
-    # keep chips
 
 
 def push():
@@ -142,14 +155,13 @@ def push():
     global draws_count
     draws_count += 1
     return draws_count
-    # add chips
+
 
 def blackjack_push():
     print('Push with BlackJack?!? Terrible luck...\n\n')
     global draws_count
     draws_count += 1
     return draws_count
-    # add chips
 
 
 def deal_card(who):
@@ -186,6 +198,36 @@ def show_hand(hand):
         print(hand[card])
 
 
+def set_wager(wager_amount):
+    global player_chips
+    global current_wager
+    try:
+        number = int(wager_amount)
+    except ValueError:
+        print('Wager amount must be a whole number of chips, not %s' % wager_amount)
+        print('I\'ll make your wager the minimum of 2 chips')
+        wager_amount = 2
+        player_chips += current_wager
+        player_chips -= wager_amount
+        current_wager = wager_amount
+        print('Current wager: %s' % current_wager)
+        return current_wager
+    else:
+        wager_amount = int(wager_amount)
+        if wager_amount < 2:
+            print('Minimum wager is 2 chips')
+            wager_amount = 2
+            player_chips += current_wager
+            player_chips -= wager_amount
+            current_wager = wager_amount
+        else:
+            player_chips += current_wager
+            player_chips -= wager_amount
+            current_wager = wager_amount
+        print('Current wager: %s' % current_wager)
+        return current_wager
+
+
 while continue_play:
     if shuffle_needed:
         deck = shuffle_deck(num_shuffles, deck, ranks, suits)
@@ -203,10 +245,27 @@ while continue_play:
     split_hand = False
     double_down = False
 
-    print('Total Player Wins: %s   Total House Wins: %s   Total Draws: %s'
+    print('\n\nTotal Player Wins: %s   Total House Wins: %s   Total Draws: %s'
           % (player_wins_count + player_blackjack_count,
              house_wins_count + house_blackjack_count,
              draws_count))
+
+# set wager here
+
+    while first_game:
+        if auto_play:
+            print('Player Chips: %s' % player_chips)
+            wager_amount = auto_wager
+            current_wager = set_wager(wager_amount)
+            print('Player Chips: %s' % player_chips)
+            first_game = False
+        else:
+            print('Player Chips: %s' % player_chips)
+            wager_amount = input('Wager amount:  ')
+            current_wager = set_wager(wager_amount)
+            print('Player Chips: %s' % player_chips)
+            first_game = False
+
     this_session_games += 1 # debug thing to run a lot of num_games, remove later
     deal_card(player_hand)
     deal_card(dealer_hand)
@@ -317,19 +376,18 @@ while continue_play:
         print('Player\'s final hand value is %s' % player_value)
         print('Dealer\'s final hand value is %s' % dealer_value)
         player_wins()
-        # player chips increase
 
     if player_value < dealer_value and not dealer_bust and not dealer_has_blackjack:
         print('Player\'s final hand value is %s' % player_value)
         print('Dealer\'s final hand value is %s' % dealer_value)
         dealer_wins()
-        # player chips stay constant
 
     if player_value == dealer_value and not blackjack_is_push:
         print('Player\'s final hand value is %s' % player_value)
         print('Dealer\'s final hand value is %s' % dealer_value)
         push()
-        # player chips stay constant
+
+    end_game = True
 
     line = {'games played':         num_games,
             'player wins':          player_wins_count,
@@ -347,31 +405,43 @@ while continue_play:
 
 # Run this_session_games number of games, then quit
 
-    if auto_play:
+    if auto_play and end_game:
+        print('Current Wager: %s    Player Chips: %s' % (current_wager, player_chips))
         if this_session_games < auto_play_games:
             continue_play = True
             player_turn = True
             dealer_turn = False
-            preTurn = True
             if shuffle_needed:
                 deck = shuffle_deck(num_shuffles, [], ranks, suits)
+            end_game = False
         else:
             continue_play = False
+            end_game = False
 
 
 # Player responds to a new game prompt
+    while end_game:
+        if not auto_play:
+            print('Current Wager: %s    Player Chips: %s' % (current_wager, player_chips))
+            response = input('Deal Again? (d)eal (b)et (q)uit:   ').lower()
+            if response in 'd':
+                continue_play = True
+                player_turn = True
+                dealer_turn = False
+                end_game = False
+                if shuffle_needed:
+                    deck = shuffle_deck(num_shuffles, [], ranks, suits)
+            elif response in 'q':
+                continue_play = False
+                end_game = False
+            elif response in 'b':
+                wager_amount = input('Wager amount:   ')
+                current_wager = set_wager(wager_amount)
+                pass
+            elif response in ['']:
+                pass
+            else:
+                print('You\'re dumb, I quit.')
+                continue_play = False
+                end_game = False
 
-    if not auto_play:
-        response = input('Deal Again? (d)eal (b)et (q)uit:   ').lower()
-        if response in 'd':
-            continue_play = True
-            player_turn = True
-            dealer_turn = False
-            preTurn = True
-            if shuffle_needed:
-                deck = shuffle_deck(num_shuffles, [], ranks, suits)
-        elif response in 'q':
-            continue_play = False
-        elif response not in ['d', 'q']:
-            print('You\'re dumb, I quit.')
-            continue_play = False
