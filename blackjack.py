@@ -42,9 +42,6 @@ if file_exists:
         house_blackjack_count = int(line['house blackjacks'])
         player_stack = int(line['player chips'])
 
-    if player_stack < 2:
-        player_stack = 10
-
 
 class Card:
     def __init__(self, rank, suit, sets):
