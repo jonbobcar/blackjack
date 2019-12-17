@@ -66,6 +66,32 @@ class Card:
         return '%s of %s' % (self.rank, self.suit)
 
 
+class Hand:
+    def __init__(self, player):
+        self.player = player
+        self.cards = []
+        self.value = 0
+        self.ace_count = 0
+
+    def hand_value(self):
+        self.value = 0
+        self.ace_count = 0
+        for card in range(len(self.cards)):
+            self.value += self.cards[card].value
+        for card in range(len(self.cards)):
+            if self.cards[card].value == 11:
+                self.ace_count += 1
+        while self.value > 21 and self.ace_count > 0:
+            print('reducing ace')
+            self.ace_count -= 1
+            self.value -= 10
+        return self.value
+
+
+#     def __str__(self):
+#         for card in range(len(self.cards)):
+#             print(self.cards[card])
+
 suits = ["Clubs", "Spades", "Hearts", "Diamonds"]
 ranks = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K']
 
@@ -170,19 +196,19 @@ def blackjack_push():
     return draws_count
 
 
-def hand_value(hand):
-    this_hand_value = 0
-    ace_count = 0
-    for card in range(len(hand)):
-        this_hand_value += hand[card].value
-    for card in range(len(hand)):
-        if hand[card].value == 11:
-            ace_count += 1
-    while this_hand_value > 21 and ace_count > 0:
-        print('reducing ace')
-        ace_count -= 1
-        this_hand_value -= 10
-    return this_hand_value
+# def hand_value(hand):
+#     this_hand_value = 0
+#     ace_count = 0
+#     for card in range(len(hand)):
+#         this_hand_value += hand[card].value
+#     for card in range(len(hand)):
+#         if hand[card].value == 11:
+#             ace_count += 1
+#     while this_hand_value > 21 and ace_count > 0:
+#         print('reducing ace')
+#         ace_count -= 1
+#         this_hand_value -= 10
+#     return this_hand_value
 
 
 def deal_card(who):
@@ -191,7 +217,8 @@ def deal_card(who):
         print('_,.-.,__,.-.,_ The shuffle card has been reached _,.-.,__,.-.,_')
         shuffle_needed = True
         deck.pop(0)
-    who.append(deck.pop(0))
+    who.cards.append(deck.pop(0))
+    who.hand_value()
     print('A card was dealt and now there are %s cards left in the deck\n' % len(deck))
 
 
@@ -200,8 +227,8 @@ def show_hand(hand):
         print('Dealers\'s hand:')
     if hand is player_hand:
         print('Player\'s hand:')
-    for card in range(len(hand)):
-        print(hand[card])
+    for card in range(len(hand.cards)):
+        print(hand.cards[card])
 
 
 def set_wager(wager_amount):
@@ -293,12 +320,14 @@ while continue_play:
             first_game = False
 
     this_session_games += 1 # debug thing to run a lot of num_games, remove later
+    player_hand = Hand('Player')
+    dealer_hand = Hand('Dealer')
     deal_card(player_hand)
     deal_card(dealer_hand)
     deal_card(player_hand)
     deal_card(dealer_hand)
-    dealer_value = hand_value(dealer_hand)
-    player_value = hand_value(player_hand)
+    dealer_value = dealer_hand.hand_value()
+    player_value = player_hand.hand_value()
 
     if player_value == 21:
         print('Player has a blackjack')
@@ -332,7 +361,7 @@ while continue_play:
 
     while player_turn:
 
-        print('\n\nDealer is showing a %s' % dealer_hand[0])
+        print('\n\nDealer is showing a %s' % dealer_hand.cards[0])
         # print('Dealer is hiding a %s' % dealer_hand[1])
         # print('Dealer hand value is %s\n' % dealer_value)
         show_hand(player_hand)
@@ -351,7 +380,7 @@ while continue_play:
 
             if 'h' in play:
                 deal_card(player_hand)
-                player_value = hand_value(player_hand)
+                player_value = player_hand.hand_value()
                 first_turn = False
             elif 'd' in play:
                 double_down = True
@@ -359,9 +388,9 @@ while continue_play:
                 set_wager(current_wager * 2)
                 show_chips()
                 deal_card(player_hand)
-                player_value = hand_value(player_hand)
+                player_value = player_hand.hand_value()
                 show_hand(player_hand)
-                hand_value(player_hand)
+                player_hand.hand_value()
                 print('Player hand value is %s\n' % player_value)
                 if player_value > 21:
                     print('Player bust')
@@ -381,7 +410,7 @@ while continue_play:
             print('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---')
             if 'h' in play:
                 deal_card(player_hand)
-                player_value = hand_value(player_hand)
+                player_value = player_hand.hand_value()
                 first_turn = False
             elif 's' in play:
                 print('\n\n ')
@@ -398,9 +427,9 @@ while continue_play:
                 set_wager(current_wager * 2)
                 show_chips()
                 deal_card(player_hand)
-                player_value = hand_value(player_hand)
+                player_value = player_hand.hand_value()
                 show_hand(player_hand)
-                hand_value(player_hand)
+                player_hand.hand_value()
                 print('Player hand value is %s\n' % player_value)
                 if player_value > 21:
                     print('Player bust')
@@ -411,6 +440,10 @@ while continue_play:
                 player_turn = False
                 dealer_turn = True
                 first_turn = False
+            elif player_value == 17 and player_hand.ace_count > 0:
+                play = 'h'
+                print('Player decided to hit on soft 17')
+                first_turn = False
             elif player_value < 17:
                 play = 'h'
                 print('Player decided to hit')
@@ -420,7 +453,7 @@ while continue_play:
                 print('Player decided to stay')
             if 'h' in play:
                 deal_card(player_hand)
-                player_value = hand_value(player_hand)
+                player_value = player_hand.hand_value()
             elif 's' in play:
                 print('\n\n ')
                 player_turn = False
@@ -428,14 +461,20 @@ while continue_play:
 
     while dealer_turn:
 
-        if dealer_value < 17:
+        if dealer_value == 17 and dealer_hand.ace_count > 0:
+            show_hand(dealer_hand)
+            print('Dealer must hit on soft 17')
+            deal_card(dealer_hand)
+            dealer_value = dealer_hand.hand_value()
+
+        elif dealer_value < 17:
             show_hand(dealer_hand)
             print('Dealer hand value is %s\n' % dealer_value)
             print('Dealer must hit')
             deal_card(dealer_hand)
-            dealer_value = hand_value(dealer_hand)
+            dealer_value = dealer_hand.hand_value()
 
-        if dealer_value > 21:
+        elif dealer_value > 21:
             show_hand(dealer_hand)
             print('Dealer hand value is %s\n' % dealer_value)
             dealer_bust = True
@@ -443,7 +482,7 @@ while continue_play:
             player_wins()
             break
 
-        if dealer_value >= 17:
+        else:
             show_hand(dealer_hand)
             print('Dealer hand value is %s\n' % dealer_value)
             print('Dealer must stay')
