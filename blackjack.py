@@ -5,7 +5,7 @@
 import random, os, sys, csv, math, statistics, time
 
 auto_play = True
-auto_play_games = 1000
+auto_play_games = 100000
 auto_wager = 2
 
 filename = 'blackjack_outcomes.csv'
@@ -70,7 +70,7 @@ suits = ["Clubs", "Spades", "Hearts", "Diamonds"]
 ranks = ['A', 2, 3, 4, 5, 6, 7, 8, 9, 10, 'J', 'Q', 'K']
 
 deck = []
-num_decks = 1
+num_decks = 8
 num_shuffles = 3
 current_wager = 0
 
