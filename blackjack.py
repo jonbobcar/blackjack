@@ -5,7 +5,7 @@
 import random, os, sys, csv, math, statistics, time
 
 auto_play = True
-auto_play_games = 100000
+auto_play_games = 1000
 auto_wager = 2
 
 filename = 'blackjack_outcomes.csv'
@@ -140,6 +140,36 @@ def shuffle_deck():
     return deck
 
 
+def set_wager(wager_amount):
+    global player_stack
+    global current_wager
+    try:
+        number = int(wager_amount)
+    except ValueError:
+        print('Wager amount must be a whole number of chips, not %s' % wager_amount)
+        print('I\'ll make your wager the minimum of 2 chips')
+        wager_amount = 2
+        player_stack += current_wager
+        player_stack -= wager_amount
+        current_wager = wager_amount
+        print('Current wager: %s' % current_wager)
+        return current_wager
+    else:
+        wager_amount = int(wager_amount)
+        if wager_amount < 2:
+            print('Minimum wager is 2 chips, I\'ll set your wager to 2 chips.')
+            wager_amount = 2
+            player_stack += current_wager
+            player_stack -= wager_amount
+            current_wager = wager_amount
+        else:
+            player_stack += current_wager
+            player_stack -= wager_amount
+            current_wager = wager_amount
+        print('Current wager: %s' % current_wager)
+        return current_wager
+
+
 def player_wins():
     print('Player Wins. House pays 2:1\n\n')
     global player_wins_count
@@ -216,36 +246,6 @@ def show_hand(hand):
         print('Player\'s hand:')
     for card in range(len(hand.cards)):
         print(hand.cards[card])
-
-
-def set_wager(wager_amount):
-    global player_stack
-    global current_wager
-    try:
-        number = int(wager_amount)
-    except ValueError:
-        print('Wager amount must be a whole number of chips, not %s' % wager_amount)
-        print('I\'ll make your wager the minimum of 2 chips')
-        wager_amount = 2
-        player_stack += current_wager
-        player_stack -= wager_amount
-        current_wager = wager_amount
-        print('Current wager: %s' % current_wager)
-        return current_wager
-    else:
-        wager_amount = int(wager_amount)
-        if wager_amount < 2:
-            print('Minimum wager is 2 chips, I\'ll set your wager to 2 chips.')
-            wager_amount = 2
-            player_stack += current_wager
-            player_stack -= wager_amount
-            current_wager = wager_amount
-        else:
-            player_stack += current_wager
-            player_stack -= wager_amount
-            current_wager = wager_amount
-        print('Current wager: %s' % current_wager)
-        return current_wager
 
 
 def show_chips():
@@ -400,7 +400,6 @@ while continue_play:
                 dealer_turn = True
 
         else:
-            set_wager(2)
             if first_turn and player_hand.value in [10, 11]:
                 play = 'd'
                 print('Player decided to DOUBLE DOWN')
@@ -487,6 +486,9 @@ while continue_play:
 # Run this_session_games number of games, then quit
 
     if auto_play and end_turn:
+        if double_down:
+            current_wager //= 2
+            double_down = False
         print('Current Wager: %s    Player\'s Stack: %s' % (current_wager, player_stack))
         if this_session_games < auto_play_games:
             continue_play = True
