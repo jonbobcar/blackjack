@@ -79,6 +79,7 @@ class Hand:
         self.ace_count = 0
         self.soft_hand = False
         self.hand_number = hand_number
+        self.split_aces = False
 
     def hand_value(self):
         self.value = 0
@@ -117,6 +118,7 @@ dealer_turn = False
 shuffle_needed = True
 first_game = True
 end_turn = False
+split_aces = False
 
 
 def shuffle_deck():
@@ -272,6 +274,9 @@ def hand_splitter():
     # global current_wager
     split_player_hand = Hand(player_hand[0].player, num_hands)
     split_player_hand.cards.append(player_hand[num_hands - 1].cards.pop(0))
+    if player_hand[num_hands - 1].cards[0].value == 11:
+      player_hand[num_hands - 1].split_aces = True
+      split_player_hand.split_aces = True
     # deal_card(player_hand[num_hands - 1])
     player_hand[num_hands - 1].cards.append(Card(3, 'Card from hand_splitter', 0))
 
@@ -393,6 +398,8 @@ while continue_play:
             playing_hand = True
             first_hand = True
             while playing_hand:
+                if player_hand[current_hand_count].split_aces = True:
+                    break
                 if player_hand[current_hand_count].cards[0].value == player_hand[current_hand_count].cards[1].value:
                     splittable_hand = True
                 print('\n\nDealer is showing a %s' % dealer_hand.cards[0])
