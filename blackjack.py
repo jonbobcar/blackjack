@@ -80,6 +80,9 @@ class Hand:
         self.soft_hand = False
         self.hand_number = hand_number
         self.split_aces = False
+        self.wager = 0
+        self.additional_wager = 0
+        self.bust = False
 
     def hand_value(self):
         self.value = 0
@@ -153,36 +156,34 @@ def shuffle_deck():
     return deck
 
 
-def set_wager(wager_amount):
+def set_wager(new_wager, old_wager, stack):
     # set_wager() takes the current chips on the table, adds then to the player stack
     # then removes wager_amount chips from the player stack and puts them on the table.
-    global player_stack
     global current_wager
     try:
-        number = int(wager_amount)
+        number = int(new_wager)
     except ValueError:
-        print('Wager amount must be a whole number of chips, not %s' % wager_amount)
+        print('Wager amount must be a whole number of chips, not \"%s\"' % new_wager)
         print('I\'ll make your wager the minimum of 2 chips')
-        wager_amount = 2
-        player_stack += current_wager
-        player_stack -= wager_amount
-        current_wager = wager_amount
-        print('Current wager: %s' % current_wager)
-        return current_wager
+        new_wager = 2
+        stack += old_wager
+        stack -= new_wager
+        old_wager = new_wager
+        print('Current wager: %s' % old_wager)
+        # current_wager = new_wager
+        return new_wager, stack
     else:
-        wager_amount = int(wager_amount)
-        if wager_amount < 2:
+        new_wager = int(new_wager)
+        if new_wager < 2:
             print('Minimum wager is 2 chips, I\'ll set your wager to 2 chips.')
-            wager_amount = 2
-            player_stack += current_wager
-            player_stack -= wager_amount
-            current_wager = wager_amount
+            new_wager = 2
+            stack += old_wager
+            stack -= new_wager
         else:
-            player_stack += current_wager
-            player_stack -= wager_amount
-            current_wager = wager_amount
-        print('Current wager: %s' % current_wager)
-        return current_wager
+            stack += old_wager
+            stack -= new_wager
+        print('Current wager: %s' % new_wager)
+        return new_wager, stack
 
 
 def player_wins():
@@ -202,7 +203,7 @@ def player_blackjack():
     global player_blackjack_count
     global player_stack
     player_blackjack_count += 1
-    player_stack += int(3/2 * current_wager)
+    player_stack += math.ceil(player_hand[0].wager * 3 // 2) + player_hand[0].wager
     print('Player wins %s chips' % (int(math.ceil(3/2 * current_wager))))
     return player_blackjack_count
 
@@ -225,7 +226,6 @@ def dealer_blackjack():
     global house_blackjack_count
     global player_stack
     house_blackjack_count += 1
-    player_stack -= current_wager
     return house_blackjack_count
 
 
@@ -267,24 +267,38 @@ def show_chips():
     print('Player\'s Stack: %s' % player_stack)
 
 
+def down_doubler(hand, stack):
+    print('Player doubled down and %s chips added to wager' % hand.wager)
+    stack -= hand.wager
+    hand.additional_wager = hand.wager
+    deal_card(hand)
+    show_hand(hand)
+    store_results()
+    return hand, stack
+
+
 def hand_splitter():
     # hand_splitter() removes one card from the current hand and puts it into a new hand.
     global num_hands
     global player_stack
-    # global current_wager
     split_player_hand = Hand(player_hand[0].player, num_hands)
     split_player_hand.cards.append(player_hand[num_hands - 1].cards.pop(0))
     if player_hand[num_hands - 1].cards[0].value == 11:
-      player_hand[num_hands - 1].split_aces = True
-      split_player_hand.split_aces = True
-    # deal_card(player_hand[num_hands - 1])
-    player_hand[num_hands - 1].cards.append(Card(3, 'Card from hand_splitter', 0))
-
+        player_hand[num_hands - 1].split_aces = True
+        split_player_hand.split_aces = True
+    deal_card(player_hand[num_hands - 1])
+    split_player_hand.wager = current_wager
+    player_stack -= current_wager
     player_hand.append(split_player_hand)
     num_hands += 1
-    player_stack -= current_wager
-    print('Current hand split. Two hands with wager %s' % current_wager)
+    print('Current hand split into two hands with wager of %s chips each' % current_wager)
     show_chips()
+
+
+def store_results():
+    results.append({'Hand Number': player_hand[current_hand_count].hand_number,
+                    'Hand Value': player_hand[current_hand_count].value,
+                    'Wager': player_hand[current_hand_count].wager + player_hand[current_hand_count].additional_wager})
 
 
 def write_out():
@@ -335,19 +349,21 @@ while continue_play:
         if auto_play:
             print('Player\'s Stack: %s' % player_stack)
             wager_amount = auto_wager
-            current_wager = set_wager(wager_amount)
+            current_wager, player_stack = set_wager(wager_amount, current_wager, player_stack)
             print('Player\'s Stack: %s' % player_stack)
             first_game = False
         if not auto_play:
-            print('Dealer Must Hit on Soft 17.')
+            print('Dealer Must Hit on Soft 17')
             print('Player\'s Stack: %s' % player_stack)
+            time.sleep(0.5)
             wager_amount = input('Wager amount:   ')
             print('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---')
-            current_wager = set_wager(wager_amount)
+            current_wager, player_stack = set_wager(wager_amount, current_wager, player_stack)
             print('Player\'s Stack: %s' % player_stack)
             first_game = False
 
     player_hand.append(Hand('Player', 0))
+    player_hand[0].wager = current_wager
     dealer_hand = Hand('Dealer', 0)
     deal_card(player_hand[0])
     deal_card(dealer_hand)
@@ -369,27 +385,18 @@ while continue_play:
         player_turn = False
         dealer_turn = False
         blackjack_is_push = True
-
-    if player_has_blackjack and not dealer_has_blackjack:
+    elif player_has_blackjack and not dealer_has_blackjack:
         show_hand(dealer_hand)
         show_hand(player_hand[0])
         player_blackjack()
         player_turn = False
         dealer_turn = False
-
-    if dealer_has_blackjack and not player_has_blackjack:
+    elif dealer_has_blackjack and not player_has_blackjack:
         show_hand(dealer_hand)
         show_hand(player_hand[0])
         dealer_blackjack()
         player_turn = False
         dealer_turn = False
-
-    #######
-    player_hand[0] = Hand('Player', 0)
-    player_hand[0].cards.append(Card(3, 'First Deal', 0))
-    player_hand[0].cards.append(Card(3, 'First Deal', 0))
-    player_hand[0].hand_value()
-    #######
 
     while player_turn:
         while current_hand_count < total_hands:
@@ -398,37 +405,26 @@ while continue_play:
             playing_hand = True
             first_hand = True
             while playing_hand:
-                if player_hand[current_hand_count].split_aces = True:
-                    break
                 if player_hand[current_hand_count].cards[0].value == player_hand[current_hand_count].cards[1].value:
                     splittable_hand = True
                 print('\n\nDealer is showing a %s' % dealer_hand.cards[0])
-                #     # print('Dealer is hiding a %s' % dealer_hand[1])
-                #     # print('Dealer hand value is %s\n' % dealer_hand.value)
+                # print('Dealer is hiding a %s' % dealer_hand[1])
+                # print('Dealer hand value is %s\n' % dealer_hand.value)
                 show_hand(player_hand[current_hand_count])
                 print('Player hand value is %s\n' % player_hand[current_hand_count].value)
 
-                if player_hand[current_hand_count].value > 21:
-                    print('Player bust')
+                if player_hand[current_hand_count].split_aces:
+                    print('Player hand value is %s\n' % player_hand[current_hand_count].value)
                     playing_hand = False
-                    # results.append([player_hand[current_hand_count].hand_number,
-                    #                 player_hand[current_hand_count].value,
-                    #                 current_wager])
-                    results.append({'Hand Number': player_hand[current_hand_count].hand_number,
-                                    'Hand Value': player_hand[current_hand_count].value,
-                                    'Wager': current_wager})
+                    store_results()
 
                 elif player_hand[current_hand_count].value == 21:
                     print('Player stands on 21')
                     playing_hand = False
-                    # results.append([player_hand[current_hand_count].hand_number,
-                    #                 player_hand[current_hand_count].value,
-                    #                 current_wager])
-                    results.append({'Hand Number': player_hand[current_hand_count].hand_number,
-                                    'Hand Value': player_hand[current_hand_count].value,
-                                    'Wager': current_wager})
+                    store_results()
 
                 elif first_turn and splittable_hand:
+                    time.sleep(0.5)
                     play = input('Would you like to (h)it, (s)tay, (d)ouble down, s(p)lit   ').lower()
                     print('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---')
 
@@ -438,23 +434,9 @@ while continue_play:
 
                     elif 'd' in play:
                         double_down = True
-                        print('Wager was doubled for the remainder of this hand')
-                        set_wager(current_wager * 2)
-                        show_chips()
-                        deal_card(player_hand[current_hand_count])
-                        show_hand(player_hand[current_hand_count])
-                        print('Player hand value is %s\n' % player_hand[current_hand_count].value)
-                        if player_hand[current_hand_count].value > 21:
-                            print('Player bust')
+                        player_hand[current_hand_count], player_stack = \
+                            down_doubler(player_hand[current_hand_count], player_stack)
                         playing_hand = False
-                        # results.append([player_hand[current_hand_count].hand_number,
-                        #                 player_hand[current_hand_count].value,
-                        #                 current_wager])
-                        results.append({'Hand Number': player_hand[current_hand_count].hand_number,
-                                        'Hand Value': player_hand[current_hand_count].value,
-                                        'Wager': current_wager})
-                        set_wager(current_wager // 2)
-
                     elif 'p' in play:
                         hand_splitter()
                         did_split = True
@@ -464,14 +446,10 @@ while continue_play:
 
                     elif 's' in play:
                         playing_hand = False
-                        # results.append([player_hand[current_hand_count].hand_number,
-                        #                 player_hand[current_hand_count].value,
-                        #                 current_wager])
-                        results.append({'Hand Number': player_hand[current_hand_count].hand_number,
-                                        'Hand Value': player_hand[current_hand_count].value,
-                                        'Wager': current_wager})
+                        store_results()
 
                 elif first_turn and not splittable_hand:
+                    time.sleep(0.5)
                     play = input('Would you like to (h)it, (s)tay, (d)ouble down   ').lower()
                     print('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---')
 
@@ -481,33 +459,16 @@ while continue_play:
 
                     elif 'd' in play:
                         double_down = True
-                        print('Wager was doubled for the remainder of this hand')
-                        set_wager(current_wager * 2)
-                        show_chips()
-                        deal_card(player_hand[current_hand_count])
-                        show_hand(player_hand[current_hand_count])
-                        print('Player hand value is %s\n' % player_hand[current_hand_count].value)
-                        if player_hand[current_hand_count].value > 21:
-                            print('Player bust')
+                        player_hand[current_hand_count], player_stack = \
+                            down_doubler(player_hand[current_hand_count], player_stack)
                         playing_hand = False
-                        # results.append([player_hand[current_hand_count].hand_number,
-                        #                 player_hand[current_hand_count].value,
-                        #                 current_wager])
-                        results.append({'Hand Number': player_hand[current_hand_count].hand_number,
-                                        'Hand Value': player_hand[current_hand_count].value,
-                                        'Wager': current_wager})
-                        set_wager(current_wager // 2)
 
                     elif 's' in play:
                         playing_hand = False
-                        # results.append([player_hand[current_hand_count].hand_number,
-                        #                 player_hand[current_hand_count].value,
-                        #                 current_wager])
-                        results.append({'Hand Number':   player_hand[current_hand_count].hand_number,
-                                       'Hand Value':    player_hand[current_hand_count].value,
-                                       'Wager':         current_wager})
+                        store_results()
 
                 else:
+                    time.sleep(0.5)
                     play = input('Would you like to (h)it, (s)tay   ').lower()
                     print('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---')
 
@@ -517,12 +478,13 @@ while continue_play:
 
                     elif 's' in play:
                         playing_hand = False
-                        # results.append([player_hand[current_hand_count].hand_number,
-                        #                 player_hand[current_hand_count].value,
-                        #                 current_wager])
-                        results.append({'Hand Number': player_hand[current_hand_count].hand_number,
-                                        'Hand Value': player_hand[current_hand_count].value,
-                                        'Wager': current_wager})
+                        store_results()
+
+                if player_hand[current_hand_count].value > 21:
+                    print('Player bust')
+                    player_hand[current_hand_count].bust = True
+                    playing_hand = False
+                    store_results()
 
             current_hand_count += 1
             print(results)
@@ -569,6 +531,9 @@ while continue_play:
         #         player_turn = False
         #         dealer_turn = True
 
+    if all(hand.bust is True for hand in player_hand):
+        dealer_turn = False
+
     while dealer_turn:
 
         if dealer_hand.value == 17 and dealer_hand.soft_hand:
@@ -586,48 +551,74 @@ while continue_play:
             show_hand(dealer_hand)
             print('Dealer hand value is %s\n' % dealer_hand.value)
             dealer_bust = True
-            print('Dealer bust')
-            # player_wins()
+            # print('Dealer bust')
             dealer_turn = False
 
         else:
             show_hand(dealer_hand)
-            print('Dealer hand value is %s\n' % dealer_hand.value)
-            print('Dealer must stay on hard 17')
+            print('Dealer hand value is %s' % dealer_hand.value)
+            print('Dealer must stay on hard 17+')
             dealer_turn = False
 
     num_games += 1
 
 # Check results of each player hand against dealer's hand
-    for result in results:
-        if result.get('Hand Value') > 21 and not dealer_bust:
-            print('Hand %s was a bust' % result.get('Hand Number'))
-        elif result.get('Hand Value') in range(dealer_hand.value + 1, 22) and not dealer_bust:
-            print('Hand %s value: %s' % (result.get('Hand Number'), result.get('Hand Value')))
-            print('Dealer hand value: %s' % dealer_hand.value)
-            print('Hand %s is a winner' % result.get('Hand Number'))
-        elif result.get('Hand Value') < dealer_hand.value and not dealer_bust:
-            print('Hand %s value: %s' % (result.get('Hand Number'), result.get('Hand Value')))
-            print('Dealer hand value: %s' % dealer_hand.value)
-            print('Hand %s is a loser' % result.get('Hand Number'))
-        elif result.get('Hand Value') == dealer_hand.value:
-            print('Hand %s value: %s' % (result.get('Hand Number'), result.get('Hand Value')))
-            print('Dealer hand value: %s' % dealer_hand.value)
-            print('Hand %s is a push' % result.get('Hand Number'))
-        elif result.get('Hand Value') < 22 and dealer_bust:
-            print('Dealer\'s hand was a bust')
-            print('Hand %s is a winner' % result.get('Hand Number'))
+#     for result in results:
+#         if result.get('Hand Value') > 21 and not dealer_bust:
+#             print('Hand %s was a bust' % result.get('Hand Number'))
+#         elif result.get('Hand Value') in range(dealer_hand.value + 1, 22) and not dealer_bust:
+#             print('Hand %s value: %s' % (result.get('Hand Number'), result.get('Hand Value')))
+#             print('Dealer hand value: %s' % dealer_hand.value)
+#             print('Hand %s is a winner' % result.get('Hand Number'))
+#         elif result.get('Hand Value') < dealer_hand.value and not dealer_bust:
+#             print('Hand %s value: %s' % (result.get('Hand Number'), result.get('Hand Value')))
+#             print('Dealer hand value: %s' % dealer_hand.value)
+#             print('Hand %s is a loser' % result.get('Hand Number'))
+#         elif result.get('Hand Value') == dealer_hand.value:
+#             print('Hand %s value: %s' % (result.get('Hand Number'), result.get('Hand Value')))
+#             print('Dealer hand value: %s' % dealer_hand.value)
+#             print('Hand %s is a push' % result.get('Hand Number'))
+#         elif result.get('Hand Value') < 22 and dealer_bust:
+#             print('Dealer\'s hand was a bust')
+#             print('Hand %s is a winner' % result.get('Hand Number'))
+
+    current_wager = 0
+    for hand in player_hand:
+        if not player_has_blackjack and not dealer_has_blackjack:
+            print('\n\nDealer hand value: %s' % dealer_hand.value)
+            if hand.value > 21 and not dealer_bust:
+                print('Hand %s was a bust' % hand.hand_number)
+            elif hand.value < 22 and dealer_bust:
+                print('Dealer\'s hand was a bust')
+                print('Hand %s is a winner' % hand.hand_number)
+                print('Payout of %s chips' % (hand.wager + hand.additional_wager))
+                player_stack += (hand.wager + hand.additional_wager) * 2
+            elif hand.value in range(dealer_hand.value + 1, 22):
+                print('Hand %s value: %s' % (hand.hand_number, hand.value))
+                print('Hand %s is a winner' % hand.hand_number)
+                print('Payout of %s chips' % (hand.wager + hand.additional_wager))
+                player_stack += (hand.wager + hand.additional_wager) * 2
+            elif hand.value < dealer_hand.value:
+                print('Hand %s value: %s' % (hand.hand_number, hand.value))
+                print('Hand %s is a loser' % hand.hand_number)
+            elif hand.value == dealer_hand.value:
+                print('Hand %s value: %s' % (hand.hand_number, hand.value))
+                print('Hand %s is a push' % hand.hand_number)
+                player_stack += hand.wager + hand.additional_wager
 
     end_turn = True
     num_hands = 1
 
     # Player responds to a new game prompt
     while end_turn:
-        if double_down:
-            current_wager //= 2
-            double_down = False
+        # if double_down:
+        #     current_wager //= 2
+        #     double_down = False
         if not auto_play:
-            print('Current Wager: %s    Player\'s Stack: %s' % (current_wager, player_stack))
+            print('\n')
+            current_wager, player_stack = set_wager(wager_amount, current_wager, player_stack)
+            print('Player\'s Stack: %s' %  player_stack)
+            time.sleep(0.5)
             response = input('Deal Again? (d)eal, change (b)et, (q)uit:   ').lower()
             print('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---')
             if response in 'd':
@@ -642,27 +633,28 @@ while continue_play:
                 continue_play = False
                 end_turn = False
             elif response in 'b':
+                time.sleep(0.5)
                 wager_amount = input('Wager amount:   ')
                 print('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---')
-                current_wager = set_wager(wager_amount)
+                current_wager, player_stack = set_wager(wager_amount, current_wager, player_stack)
 
     # Run this_session_games number of games, then quit
 
-    if auto_play and end_turn:
-        if double_down:
-            current_wager //= 2
-            double_down = False
-        print('Current Wager: %s    Player\'s Stack: %s' % (current_wager, player_stack))
-        if this_session_games < auto_play_games:
-            continue_play = True
-            player_turn = True
-            dealer_turn = False
-            if shuffle_needed:
-                deck = shuffle_deck()
-            end_turn = False
-        else:
-            continue_play = False
-            end_turn = False
+    # if auto_play and end_turn:
+    #     if double_down:
+    #         current_wager //= 2
+    #         double_down = False
+    #     print('Current Wager: %s    Player\'s Stack: %s' % (current_wager, player_stack))
+    #     if this_session_games < auto_play_games:
+    #         continue_play = True
+    #         player_turn = True
+    #         dealer_turn = False
+    #         if shuffle_needed:
+    #             deck = shuffle_deck()
+    #         end_turn = False
+    #     else:
+    #         continue_play = False
+    #         end_turn = False
 
 if not continue_play:
     write_out()
