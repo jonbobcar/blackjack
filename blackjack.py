@@ -2,7 +2,13 @@
 # I made this because I'm convinced that blackjack apps which have a monetization
 # scheme will play unfairly in order to get players to put USD into the game.
 
-import random, os, sys, csv, math, statistics, time
+import random
+import os
+import sys
+import csv
+import math
+import statistics
+import time
 
 auto_play = False
 auto_play_games = 50
@@ -43,10 +49,6 @@ if file_exists:
         house_blackjack_count = int(line['house blackjacks'])
         player_stack = int(line['player chips'])
 
-
-######
-player_stack = 100
-######
 
 class Card:
     def __init__(self, rank, suit, sets):
@@ -127,50 +129,54 @@ split_aces = False
 def shuffle_deck():
     # Each time shuffle_deck() is called, the current deck is overwritten by num_decks new 52
     # card decks and then shuffled num_shuffles times.
-    deck = []
+    new_deck = []
     global shuffle_needed
     for sets in range(num_decks):
         for rank in ranks:
             for suit in suits:
-                deck.append(Card(rank, suit, sets))
+                new_deck.append(Card(rank, suit, sets))
 
     if num_shuffles == 1:
         for shuffle in range(num_shuffles - 1, -1, -1):
-            print('Shuffling %s deck one time. Total of %s cards' % (num_decks, len(deck)))
-            for i in range(len(deck) - 1, 0, -1):
+            print('Shuffling %s deck one time. Total of %s cards' % (num_decks, len(new_deck)))
+            for i in range(len(new_deck) - 1, 0, -1):
                 j = random.randint(0, i)
-                deck[i], deck[j] = deck[j], deck[i]
+                new_deck[i], new_deck[j] = new_deck[j], new_deck[i]
     else:
         for shuffle in range(num_shuffles - 1, -1, -1):
-            print('Shuffling %s decks %s more times. Total of %s cards' % (num_decks, shuffle, len(deck)))
-            for i in range(len(deck) - 1, 0, -1):
+            print('Shuffling %s decks %s more times. Total of %s cards' % (num_decks, shuffle, len(new_deck)))
+            for i in range(len(new_deck) - 1, 0, -1):
                 j = random.randint(0, i)
-                deck[i], deck[j] = deck[j], deck[i]
+                new_deck[i], new_deck[j] = new_deck[j], new_deck[i]
 
-    offsetbound = round(len(deck) * .1)
-    shuffleoffset = random.randint(-offsetbound, offsetbound)
-    shufflespot = round(len(deck) * 0.85) + shuffleoffset
-    deck.insert(shufflespot - 5, Card(0, 'shuffle', 'shuffle'))
+    offset_bound = round(len(new_deck) * .1)
+    shuffle_offset = random.randint(-offset_bound, offset_bound)
+    shuffle_spot = round(len(new_deck) * 0.85) + shuffle_offset
+    new_deck.insert(shuffle_spot - 5, Card(0, 'shuffle', 'shuffle'))
 
     shuffle_needed = False
-    return deck
+    return new_deck
 
 
 def set_wager(new_wager, old_wager, stack):
     # set_wager() takes the current chips on the table, adds then to the player stack
     # then removes wager_amount chips from the player stack and puts them on the table.
     global current_wager
+    global continue_play
+    if stack + old_wager < 2:
+        print('You don\'t have enough chips to play')
+        continue_play = False
+        return old_wager, stack
     try:
-        number = int(new_wager)
+        _ = int(new_wager)
     except ValueError:
         print('Wager amount must be a whole number of chips, not \"%s\"' % new_wager)
         print('I\'ll make your wager the minimum of 2 chips')
         new_wager = 2
         stack += old_wager
         stack -= new_wager
-        old_wager = new_wager
-        print('Current wager: %s' % old_wager)
-        # current_wager = new_wager
+        # old_wager = new_wager
+        print('Current wager: %s' % new_wager)
         return new_wager, stack
     else:
         new_wager = int(new_wager)
@@ -179,11 +185,18 @@ def set_wager(new_wager, old_wager, stack):
             new_wager = 2
             stack += old_wager
             stack -= new_wager
+            print('Current wager: %s' % new_wager)
+            return new_wager, stack
         else:
             stack += old_wager
-            stack -= new_wager
-        print('Current wager: %s' % new_wager)
-        return new_wager, stack
+            if new_wager > stack:
+                print('You only have %s chips.' % stack)
+                new_wager = stack
+                stack -= new_wager
+            else:
+                stack -= new_wager
+            print('Current wager: %s' % new_wager)
+            return new_wager, stack
 
 
 def player_wins():
@@ -298,32 +311,31 @@ def hand_splitter():
 def store_results():
     results.append({'Hand Number': player_hand[current_hand_count].hand_number,
                     'Hand Value': player_hand[current_hand_count].value,
-                    'Wager': player_hand[current_hand_count].wager + player_hand[current_hand_count].additional_wager})
+                    'Wager': player_hand[current_hand_count].wager + player_hand[current_hand_count].additional_wager
+                    })
 
 
-def write_out():
-    # Writes the game statistics and persistant player stack out to database.
-    line = {'games played': num_games,
-            'player wins': player_wins_count,
-            'player blackjacks': player_blackjack_count,
-            'house wins': house_wins_count,
-            'house blackjacks': house_blackjack_count,
-            'draws count': draws_count,
-            'player chips': player_stack
-            }
+def write_out(file_name):
+    # Writes the game statistics and persistent player stack out to database.
+    write_line = {'games played':       num_games,
+                  'player wins':        player_wins_count,
+                  'player blackjacks':  player_blackjack_count,
+                  'house wins':         house_wins_count,
+                  'house blackjacks':   house_blackjack_count,
+                  'draws count':        draws_count,
+                  'player chips':       player_stack
+                  }
 
-    with open(filename, 'a') as f:
-        csv_writer = csv.DictWriter(f, fieldnames=fieldnames)
+    with open(file_name, 'a') as write_file:
+        csv_writer = csv.DictWriter(write_file, fieldnames=fieldnames)
         if not file_exists:
             csv_writer.writeheader()
-        csv_writer.writerow(line)
+        csv_writer.writerow(write_line)
 
 
 while continue_play:
-    this_session_games += 1 # auto_play variable
+    this_session_games += 1  # auto_play variable
 
-    if shuffle_needed:
-        deck = shuffle_deck()
     player_hand = []
     dealer_hand = []
     results = []
@@ -362,6 +374,11 @@ while continue_play:
             print('Player\'s Stack: %s' % player_stack)
             first_game = False
 
+    if not continue_play:
+        break
+
+    if shuffle_needed:
+        deck = shuffle_deck()
     player_hand.append(Hand('Player', 0))
     player_hand[0].wager = current_wager
     dealer_hand = Hand('Dealer', 0)
@@ -491,7 +508,7 @@ while continue_play:
         player_turn = False
         dealer_turn = True
 
-######## Autoplayer here
+# Autoplayer here
 
         # else:
         #     if first_turn and this_hand.value in [11] and auto_play:
@@ -611,28 +628,35 @@ while continue_play:
 
     # Player responds to a new game prompt
     while end_turn:
-        # if double_down:
-        #     current_wager //= 2
-        #     double_down = False
         if not auto_play:
             print('\n')
-            current_wager, player_stack = set_wager(wager_amount, current_wager, player_stack)
-            print('Player\'s Stack: %s' %  player_stack)
+            if current_wager == 0:
+                current_wager, player_stack = set_wager(wager_amount, current_wager, player_stack)
+            print('Player\'s Stack: %s' % player_stack)
             time.sleep(0.5)
+            if not continue_play:
+                break
+            # current_wager, player_stack = set_wager(wager_amount, current_wager, player_stack)
             response = input('Deal Again? (d)eal, change (b)et, (q)uit:   ').lower()
             print('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---')
             if response in 'd':
-                continue_play = True
-                player_turn = True
-                dealer_turn = False
-                end_turn = False
-                if shuffle_needed:
-                    deck = shuffle_deck()
+                if player_stack + current_wager < 2:
+                    continue_play = False
+                    print('You don\'t have enough chips to play')
+                    player_stack += current_wager
+                else:
+                    continue_play = True
+                    player_turn = True
+                    dealer_turn = False
+                    end_turn = False
+                    if shuffle_needed:
+                        deck = shuffle_deck()
             elif response in 'q':
                 player_stack += current_wager
                 continue_play = False
                 end_turn = False
             elif response in 'b':
+                print('Total player chips: %s' % (player_stack + current_wager))
                 time.sleep(0.5)
                 wager_amount = input('Wager amount:   ')
                 print('--- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- --- ---')
@@ -657,4 +681,5 @@ while continue_play:
     #         end_turn = False
 
 if not continue_play:
-    write_out()
+    print('Saving %s\'s %s chips for next time!' % (player_hand[0].player, player_stack))
+    write_out(filename)
