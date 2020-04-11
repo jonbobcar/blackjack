@@ -96,7 +96,6 @@ class Hand:
                 self.ace_count += 1
                 self.soft_hand = True
         while self.value > 21 and self.ace_count > 0:
-            print('reducing ace')
             self.ace_count -= 1
             self.value -= 10
             self.soft_hand = False
@@ -267,6 +266,7 @@ def deal_card(where):
     where.cards.append(deck.pop(0))
     where.hand_value()
     print('A card was dealt and now there are %s cards left in the deck\n' % len(deck))
+    time.sleep(0.5)
 
 
 def show_hand(hand):
@@ -561,12 +561,14 @@ while continue_play:
         elif dealer_hand.value < 17:
             show_hand(dealer_hand)
             print('Dealer hand value is %s\n' % dealer_hand.value)
+            time.sleep(1)
             print('Dealer must hit')
             deal_card(dealer_hand)
 
         elif dealer_hand.value > 21:
             show_hand(dealer_hand)
             print('Dealer hand value is %s\n' % dealer_hand.value)
+            time.sleep(1)
             dealer_bust = True
             # print('Dealer bust')
             dealer_turn = False
@@ -574,6 +576,7 @@ while continue_play:
         else:
             show_hand(dealer_hand)
             print('Dealer hand value is %s' % dealer_hand.value)
+            time.sleep(1)
             print('Dealer must stay on hard 17+')
             dealer_turn = False
 
