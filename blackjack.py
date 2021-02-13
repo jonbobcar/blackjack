@@ -4,18 +4,14 @@
 
 import random
 import os
-import sys
-import csv
 import math
-import statistics
 import time
+import json
 
 auto_play = False
 auto_play_games = 50
 auto_wager = 2
 
-filename = 'blackjack_outcomes.csv'
-file_exists = os.path.isfile(filename)
 fieldnames = ['games played',
               'player wins',
               'player blackjacks',
@@ -24,30 +20,33 @@ fieldnames = ['games played',
               'draws count',
               'player chips']
 
-num_games = 0
-player_wins_count = 0
-house_wins_count = 0
-draws_count = 0
-player_blackjack_count = 0
-house_blackjack_count = 0
+filename = 'blackjack_data.json'
+file_exists = os.path.isfile(filename)
+
+if not file_exists:
+    num_games = 0
+    player_wins_count = 0
+    house_wins_count = 0
+    draws_count = 0
+    player_blackjack_count = 0
+    house_blackjack_count = 0
+    player_stack = 100
+
 this_session_games = 0
-player_stack = 100
 
 
 # Open database containing play statistics and persistent player stack
 if file_exists:
     with open(filename, 'r') as f:
-        csv_reader = csv.DictReader(f)
-        csv_data = list(csv_reader)
+        json_data = json.load(f)
 
-    for line in csv_data:
-        num_games = int(line['games played'])
-        player_wins_count = int(line['player wins'])
-        house_wins_count = int(line['house wins'])
-        draws_count = int(line['draws count'])
-        player_blackjack_count = int(line['player blackjacks'])
-        house_blackjack_count = int(line['house blackjacks'])
-        player_stack = int(line['player chips'])
+    num_games = json_data['games played']
+    player_wins_count = json_data['player wins']
+    house_wins_count = json_data['house wins']
+    draws_count = json_data['draws count']
+    player_blackjack_count = json_data['player blackjacks']
+    house_blackjack_count = json_data['house blackjacks']
+    player_stack = json_data['player chips']
 
 
 class Card:
@@ -317,20 +316,18 @@ def store_results():
 
 def write_out(file_name):
     # Writes the game statistics and persistent player stack out to database.
-    write_line = {'games played':       num_games,
-                  'player wins':        player_wins_count,
-                  'player blackjacks':  player_blackjack_count,
-                  'house wins':         house_wins_count,
-                  'house blackjacks':   house_blackjack_count,
-                  'draws count':        draws_count,
-                  'player chips':       player_stack
+    json_data = {
+        'games played':       num_games,
+        'player wins':        player_wins_count,
+        'player blackjacks':  player_blackjack_count,
+        'house wins':         house_wins_count,
+        'house blackjacks':   house_blackjack_count,
+        'draws count':        draws_count,
+        'player chips':       player_stack
                   }
 
-    with open(file_name, 'a') as write_file:
-        csv_writer = csv.DictWriter(write_file, fieldnames=fieldnames)
-        if not file_exists:
-            csv_writer.writeheader()
-        csv_writer.writerow(write_line)
+    with open(filename, 'w') as write_file:
+        json.dump(json_data, write_file, indent=6)
 
 
 while continue_play:
