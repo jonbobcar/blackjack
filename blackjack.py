@@ -495,6 +495,7 @@ while continue_play:
                         store_results()
 
                 if player_hand[current_hand_count].value > 21:
+                    print('Player hand value is %s\n' % player_hand[current_hand_count].value)
                     print('Player bust')
                     player_hand[current_hand_count].bust = True
                     playing_hand = False
@@ -604,7 +605,8 @@ while continue_play:
         if not player_has_blackjack and not dealer_has_blackjack:
             print('\n\nDealer hand value: %s' % dealer_hand.value)
             if hand.value > 21 and not dealer_bust:
-                print('Hand %s was a bust' % hand.hand_number)
+                show_hand(dealer_hand)
+                print('Player\'s hand %s was a bust' % hand.hand_number)
             elif hand.value < 22 and dealer_bust:
                 print('Dealer\'s hand was a bust')
                 print('Hand %s is a winner' % hand.hand_number)
